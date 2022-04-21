@@ -2,28 +2,17 @@
 
 ## On devnet
 
-Deploy & interact with contract:
+To compile the smart contract:
 
 ```
-python3 ./interaction/playground.py --pem=./testnet/wallets/users/alice.pem --proxy=http://localhost:7950
-```
-
-Interact with existing contract:
+cd contracts/testdex/
+erdpy contract build
 
 ```
-python3 ./interaction/playground.py --pem=./testnet/wallets/users/alice.pem --proxy=http://localhost:7950 --contract=erd1...
-```
 
-## On testnet
-
-Deploy & interact with contract:
+To deploy it (requires and argument with the fee used in the DEX):
 
 ```
-python3 ./interaction/playground.py --pem=my.pem --proxy=https://testnet-gateway.elrond.com
-```
+erdpy contract deploy --pem="~/wallet/wallet1.pem" --recall-nonce --gas-limit=100000000 --project=. --proxy="https://devnet-gateway.elrond.com" --chain="D" --arguments 0x05 --send
 
-Interact with existing contract:
-
-```
-python3 ./interaction/playground.py --pem=my.pem --proxy=https://testnet-gateway.elrond.com --contract=erd1...
 ```

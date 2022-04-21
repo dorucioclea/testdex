@@ -9,6 +9,18 @@ pub enum Status {
     Successful
 }
 
+// source: https://users.rust-lang.org/t/ternary-operator/40330
+macro_rules! either {
+    ($test:expr => $true_expr:expr; $false_expr:expr) => {
+        if $test {
+            $true_expr
+        }
+        else {
+            $false_expr
+        }
+    }
+}
+
 /// testDEX is a DEX implementing AMM
 #[elrond_wasm::contract]
 pub trait TestDEX {
@@ -42,25 +54,6 @@ pub trait TestDEX {
         self.fee().set(&fee);
     }
 
-    // #[endpoint(addLiquidity)]
-    // #[only_owner]
-    // #[payable("*")]
-    // fn add_liquidity(&self, token2: &TokenIdentifier, qty: &BigUint) -> SCResult<()> {
-        
-    //     let (payment, token) = self.call_value().payment_token_pair();
-    //     let caller = self.blockchain().get_caller();
-    //     let sc_address 
-        
-    //     self.liquidity_token(&token).update(|liquidity_token| *liquidity_token += payment);
-
-    //     self.send().direct(&caller, &token2, 0, &qty, &[]);
-
-    //     self.liquidity_egld(&token2).update(|liquidity_egld| *liquidity_egld += payment);
-
-    //     Ok(())
-
-    // }
-
     #[endpoint(addLiquidityToken)]
     #[only_owner]
     #[payable("*")]
@@ -90,12 +83,12 @@ pub trait TestDEX {
     #[payable("*")]
     fn claim_liquidity_token(&self, token: &TokenIdentifier) -> BigUint {
 
-        let caller = self.blockchain().get_owner_address();
+        let owner = self.blockchain().get_owner_address();
         let funds = self.liquidity_token(&token).get();
 
         if funds > 0u32 {
             self.liquidity_token(&token).clear();
-            self.send().direct(&caller, &token, 0, &funds, &[]);
+            self.send().direct(&owner, &token, 0, &funds, &[]);
         }
 
         funds
@@ -131,12 +124,12 @@ pub trait TestDEX {
     #[payable("*")]
     fn claim_liquidity_egld(&self, token: &TokenIdentifier) -> BigUint {
         
-        let caller = self.blockchain().get_owner_address();
+        let owner = self.blockchain().get_owner_address();
         let funds = self.liquidity_egld(&token).get();
 
         if funds > 0u32 {
             self.liquidity_egld(&token).clear();
-            self.send().direct(&caller, &token, 0, &funds, &[]);
+            self.send().direct(&owner, &TokenIdentifier::egld(), 0, &funds, &[]);
         }
 
         funds
@@ -144,17 +137,21 @@ pub trait TestDEX {
 
     #[view]
     fn status(&self, token: &TokenIdentifier) -> Status {
+
         if self.liquidity_egld(&token).get() > 0 && self.liquidity_token(&token).get() > 0  {
             Status::Successful
         } else {
             Status::Funding
         }
+
     }
     
     // K va acumulando error si comprastoken con EGLD
     #[view(calculateK)]
     fn calculate_k(&self, token: &TokenIdentifier) -> BigUint {
+
         self.liquidity_egld(&token).get() * self.liquidity_token(&token).get()
+
     }
 
     #[endpoint(claimEarnings)]
@@ -162,20 +159,20 @@ pub trait TestDEX {
     #[payable("*")]
     fn claim_earnings(&self, token: &TokenIdentifier) -> BigUint {
         
-        let caller = self.blockchain().get_owner_address();
+        let owner = self.blockchain().get_owner_address();
         let funds = self.earnings(&token).get();
 
         if funds > 0u32 {
             self.earnings(&token).clear();
-            self.send().direct(&caller, &token, 0, &funds, &[]);
+            self.send().direct(&owner, &token, 0, &funds, &[]);
         }
 
         funds
 
     }
 
-    // in: qty EGLD
-    // out: token
+    // in: quantity EGLD
+    // out: quantity token (with fee subtracted)
     #[view(priceEgldToken)]
     fn price_egld_token(&self, token: &TokenIdentifier, qty: &BigUint) -> BigUint {
         
@@ -190,7 +187,7 @@ pub trait TestDEX {
 
 
     // in: quantity EGLD
-    // out: quantity token
+    // out: quantity token (without fee)
     #[view(priceEgldTokenNoFee)]
     fn price_egld_token_no_fee(&self, token: &TokenIdentifier, qty: &BigUint) -> BigUint {
         
@@ -202,8 +199,8 @@ pub trait TestDEX {
         numerator / denominator
     }
 
-    // in: quantity EGLD
-    // out: quantity token
+    // in: token
+    // out: quantity EGLD paid as a fee
     #[view(feeEgldToken)]
     fn fee_egld_token(&self, token: &TokenIdentifier, qty: &BigUint) -> BigUint {
 
@@ -247,6 +244,8 @@ pub trait TestDEX {
         denominator
     }
 
+    // in: quantity token
+    // out: quantity EGLD (without fee)
     #[view(priceTokenEgldNoFee)]
     fn price_token_egld_no_fee(&self, token: &TokenIdentifier, qty: &BigUint) -> BigUint {
 
@@ -267,6 +266,22 @@ pub trait TestDEX {
 
         value_no_fee - value_fee
 
+    }
+
+    #[view(ratio)]
+    fn ratio(&self, token: &TokenIdentifier) -> BigUint {
+
+        let liq_egld = self.liquidity_egld(&token).get();
+        let liq_token = self.liquidity_token(&token).get();
+
+        let ratio: BigUint = either!(liq_token > liq_egld => liq_token/liq_egld; liq_egld/liq_token);
+
+        if ratio > 1 {
+            ratio
+        } else {
+            BigUint::from(1u32)
+        }
+            
     }
 
     #[endpoint(egldToToken)]
@@ -291,38 +306,30 @@ pub trait TestDEX {
         let earning_token = &token_no_fee - &token_fee;
         // customer's address
         let caller = self.blockchain().get_caller();
-        // old K constant to to adjust the new one
-        let old_k = self.calculate_k(&token);
-        // let k_is_not_equal: bool = new_k != old_k;
-        // let new_k_is_greater: bool = new_k - old_k > 0;
+        let initial_k = self.initial_k(&token).get();
 
-        // adjusting K constant
-        // if new_k != old_k {
-        //     if new_k - old_k > 0 {
-        //         // I add the remaining to the earnings
-        //         // maybe another option is to burn the tokens
-        //         earning_token += 1u32;
-        //         token_no_fee -= 1u32;
-        //     }
-        // }
 
         self.liquidity_egld(&token).update(|liquidity_egld| *liquidity_egld += &payment);
         self.liquidity_token(&token).update(|liquidity_token| *liquidity_token -= &token_no_fee);
         self.earnings(&token).update(|earnings| *earnings += &earning_token);
 
         let new_k = self.calculate_k(&token);
-        let initial_k = self.initial_k(&token).get();
         
         // adjusting K constant
-        // if new_k != initial_k {
-        //     if new_k > old_k {
-        //         self.liquidity_token(&token).update(|liquidity_token| *liquidity_token -= 1u32);
-        //         self.earnings(&token).update(|earnings| *earnings += 1u32);
-        //     } else if self.calculate_k(&token) < old_k {
-        //         self.liquidity_token(&token).update(|liquidity_token| *liquidity_token += 1u32);
-        //         self.earnings(&token).update(|earnings| *earnings -= 1u32);
-        //     }
-        // }
+        if new_k != initial_k {
+
+            let ratio = self.ratio(&token);
+            
+            if new_k > initial_k {
+                self.liquidity_token(&token).update(|liquidity_token| *liquidity_token -= ratio.clone());
+                self.earnings(&token).update(|earnings| *earnings += ratio.clone());
+
+            } else {
+                self.liquidity_token(&token).update(|liquidity_token| *liquidity_token += ratio.clone());
+                self.earnings(&token).update(|earnings| *earnings -= ratio.clone());
+            }
+        }
+        
         // send token bought (token_fee) to customer address
         self.send().direct(&caller, &token, 0, &token_fee, &[]);
 
@@ -347,27 +354,29 @@ pub trait TestDEX {
         let egld_no_fee =  self.price_token_egld_no_fee(&token, &payment);
         let earning_egld = &egld_no_fee - &egld_fee;
         let caller = self.blockchain().get_caller();
-        let old_k = self.calculate_k(&token);
+        let initial_k = self.initial_k(&token).get();
 
         self.liquidity_token(&token).update(|liquidity_token| *liquidity_token += &payment);
         self.liquidity_egld(&token).update(|liquidity_egld| *liquidity_egld -= &egld_no_fee);
         self.earnings(&TokenIdentifier::egld()).update(|earnings| *earnings += &earning_egld);
         
         let new_k = self.calculate_k(&token);
-        let initial_k = self.initial_k(&token).get();
-
-        self.liquidity_token(&token).update(|liquidity_token| *liquidity_token += payment);
-
+        
+                
         // adjusting K constant
-        // if new_k != initial_k {
-        //     if new_k > old_k {
-        //         self.liquidity_egld(&token).update(|liquidity_egld| *liquidity_egld -= 1u32);
-        //         self.earnings(&TokenIdentifier::egld()).update(|earnings| *earnings += 1u32);
-        //     } else if self.calculate_k(&token) < old_k {
-        //         self.liquidity_egld(&token).update(|liquidity_egld| *liquidity_egld += 1u32);
-        //         self.earnings(&TokenIdentifier::egld()).update(|earnings| *earnings -= 1u32);
-        //     }
-        // }
+        if new_k != initial_k {
+
+            let ratio = self.ratio(&token);
+            
+            if new_k > initial_k {
+                self.liquidity_egld(&token).update(|liquidity_egld| *liquidity_egld -= ratio.clone());
+                self.earnings(&TokenIdentifier::egld()).update(|earnings| *earnings += ratio.clone());
+            } else {
+                self.liquidity_egld(&token).update(|liquidity_egld| *liquidity_egld += ratio.clone());
+                self.earnings(&TokenIdentifier::egld()).update(|earnings| *earnings -= ratio.clone());
+            }
+        }
+
         // send token bought (token_fee) to customer address
         self.send().direct(&caller, &TokenIdentifier::egld(), 0, &egld_fee, &[]);
 

@@ -1,5 +1,5 @@
 ######### CONTRACT_ADDRESS
-export CONTRACT_ADDRESS=erd1qqqqqqqqqqqqqpgqkn3cf25km09l3akmrxrpmegmhdu2ee8vmq2qwqd5r3
+export CONTRACT_ADDRESS=erd1qqqqqqqqqqqqqpgqsc08zekfdgazdjacva70y9ywst7ykz8rmq2q7u4y27
 
 ######### DEPLOY
 erdpy contract deploy --pem="~/wallet/wallet1.pem" --recall-nonce --gas-limit=100000000 --project=. --proxy="https://devnet-gateway.elrond.com" --chain="D" --arguments 0x05 --send
@@ -37,8 +37,11 @@ erdpy --verbose contract query $CONTRACT_ADDRESS --proxy https://devnet-gateway.
 ######### feeTokenEgld
 erdpy --verbose contract query $CONTRACT_ADDRESS --proxy https://devnet-gateway.elrond.com --function=feeTokenEgld --arguments 0x554f432d643133396262 0x01
 
-######## getEarnings
+######## getEarnings -UOC
 erdpy --verbose contract query $CONTRACT_ADDRESS --proxy https://devnet-gateway.elrond.com --function=getEarnings --arguments 0x554f432d643133396262
+
+######## getEarnings -EGLD
+erdpy --verbose contract query $CONTRACT_ADDRESS --proxy https://devnet-gateway.elrond.com --function=getEarnings --arguments 0x45474c44
 
 ######## egldToToken
 erdpy --verbose contract call $CONTRACT_ADDRESS --pem="~/wallet/wallet2.pem" --gas-limit=200000000 --function="egldToToken" --proxy="https://devnet-gateway.elrond.com" --chain=D  --recall-nonce --value 10000000000000000 --arguments 0x554f432d643133396262 --send
