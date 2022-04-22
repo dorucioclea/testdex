@@ -1,14 +1,20 @@
 ######### CONTRACT_ADDRESS
-export CONTRACT_ADDRESS=erd1qqqqqqqqqqqqqpgqsc08zekfdgazdjacva70y9ywst7ykz8rmq2q7u4y27
+export CONTRACT_ADDRESS=erd1qqqqqqqqqqqqqpgqv9kru8n83j240ry4fu82cgnz4mcr5m7ymq2qk0wtvk
 
 ######### DEPLOY
 erdpy contract deploy --pem="~/wallet/wallet1.pem" --recall-nonce --gas-limit=100000000 --project=. --proxy="https://devnet-gateway.elrond.com" --chain="D" --arguments 0x05 --send
 
-######### getLiquidity - Egld
+######### getLiquidity - Egld - UOC
 erdpy --verbose contract query $CONTRACT_ADDRESS --proxy https://devnet-gateway.elrond.com --function=getLiquidityEgld --arguments 0x554f432d643133396262
 
 ######### getLiquidity - UOC-d139bb
 erdpy --verbose contract query $CONTRACT_ADDRESS --proxy https://devnet-gateway.elrond.com --function=getLiquidityToken --arguments 0x554f432d643133396262
+
+######### getLiquidity - Egld - Web
+erdpy --verbose contract query $CONTRACT_ADDRESS --proxy https://devnet-gateway.elrond.com --function=getLiquidityEgld --arguments 0x5745422d356430386265
+
+######### getLiquidity - Web
+erdpy --verbose contract query $CONTRACT_ADDRESS --proxy https://devnet-gateway.elrond.com --function=getLiquidityToken --arguments 0x5745422d356430386265
 
 ######### getLiquidity - status
 erdpy --verbose contract query $CONTRACT_ADDRESS --proxy https://devnet-gateway.elrond.com --function=status --arguments 0x554f432d643133396262
@@ -52,3 +58,5 @@ erdpy --verbose contract query $CONTRACT_ADDRESS --proxy https://devnet-gateway.
 ######## claimEarnings
 erdpy --verbose contract query $CONTRACT_ADDRESS --proxy https://devnet-gateway.elrond.com --function=claimEarnings --arguments 0x554f432d643133396262
 
+######## getTokens
+erdpy --verbose contract query $CONTRACT_ADDRESS --proxy https://devnet-gateway.elrond.com --function=getTokens

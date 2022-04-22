@@ -33,6 +33,15 @@ pub trait TestDEX {
     #[storage_mapper("liquidity_egld")]
     fn liquidity_egld(&self, token: &TokenIdentifier) -> SingleValueMapper<BigUint>;
 
+    // I choose implement it this way for gas efficiency
+    // https://docs.elrond.com/developers/best-practices/storage-mappers/#singlevaluemapper-vs-mapmapper
+    // #[view(getTokens)]
+    // #[storage_mapper("tokens")]
+    // fn tokens(&self) -> SetMapper<TokenIdentifier>;
+    #[view(getTokens)]
+    #[storage_mapper("tokens")]
+    fn tokens(&self) -> SingleValueMapper<ManagedVec<TokenIdentifier>>;
+
     #[view(getInitialK)]
     #[storage_mapper("initial_k")]
     fn initial_k(&self, token: &TokenIdentifier) -> SingleValueMapper<BigUint>;
@@ -72,6 +81,10 @@ pub trait TestDEX {
         if self.status(&token) == Status::Successful {
             let initial_k = self.calculate_k(&token);
             self.initial_k(&token).set(&initial_k);
+            // add token to the tokens vector
+            let mut vec_tokens = self.tokens().get();
+            vec_tokens.push(token);
+            self.tokens().set(vec_tokens);
         }
 
         Ok(())
@@ -87,6 +100,13 @@ pub trait TestDEX {
         let funds = self.liquidity_token(&token).get();
 
         if funds > 0u32 {
+            if self.status(&token) == Status::Successful {
+                // remove token from the tokens vector
+                let mut vec_tokens = self.tokens().get();
+                let index = vec_tokens.iter().position(|x| *x == token.clone()).unwrap();
+                vec_tokens.remove(index);
+                self.tokens().set(vec_tokens);
+            }
             self.liquidity_token(&token).clear();
             self.send().direct(&owner, &token, 0, &funds, &[]);
         }
@@ -113,6 +133,10 @@ pub trait TestDEX {
         if self.status(&token) == Status::Successful {
             let initial_k = self.calculate_k(&token);
             self.initial_k(&token).set(&initial_k);
+            // add element to the tokens vector
+            let mut vec_tokens = self.tokens().get();
+            vec_tokens.push(token.clone());
+            self.tokens().set(vec_tokens);
         }
 
         Ok(())
@@ -128,6 +152,13 @@ pub trait TestDEX {
         let funds = self.liquidity_egld(&token).get();
 
         if funds > 0u32 {
+            if self.status(&token) == Status::Successful {
+                // remove token from the tokens vector
+                let mut vec_tokens = self.tokens().get();
+                let index = vec_tokens.iter().position(|x| *x == token.clone()).unwrap();
+                vec_tokens.remove(index);
+                self.tokens().set(vec_tokens);
+            }
             self.liquidity_egld(&token).clear();
             self.send().direct(&owner, &TokenIdentifier::egld(), 0, &funds, &[]);
         }
@@ -145,6 +176,13 @@ pub trait TestDEX {
         }
 
     }
+
+    // #[view(getNumTokens)]
+    // fn num_tokens(&self) -> usize {
+
+    //     self.tokens().len()
+
+    // }
     
     // K va acumulando error si comprastoken con EGLD
     #[view(calculateK)]

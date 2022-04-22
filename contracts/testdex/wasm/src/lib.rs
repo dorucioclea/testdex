@@ -21,6 +21,7 @@ elrond_wasm_node::wasm_endpoints! {
         getInitialK
         getLiquidityEgld
         getLiquidityToken
+        getTokens
         priceEgldToken
         priceEgldTokenNoFee
         priceTokenEgld

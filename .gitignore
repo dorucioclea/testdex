@@ -10,6 +10,7 @@
 **/*.interaction.json
 **/target/**
 **/build/**
+**/.vscode/**
 Cargo.lock
 
 # misc
