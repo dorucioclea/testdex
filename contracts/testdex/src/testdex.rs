@@ -25,27 +25,29 @@ macro_rules! either {
 #[elrond_wasm::contract]
 pub trait TestDEX {
 
+    // to store liquidity of the tokens
     #[view(getLiquidityToken)]
     #[storage_mapper("liquidity_token")]
     fn liquidity_token(&self, token: &TokenIdentifier) -> SingleValueMapper<BigUint>;
 
+    // to store liquidity of the tokens in EGLD
     #[view(getLiquidityEgld)]
     #[storage_mapper("liquidity_egld")]
     fn liquidity_egld(&self, token: &TokenIdentifier) -> SingleValueMapper<BigUint>;
 
+    // tokens with pairs ready to swap
     // I choose implement it this way for gas efficiency
     // https://docs.elrond.com/developers/best-practices/storage-mappers/#singlevaluemapper-vs-mapmapper
-    // #[view(getTokens)]
-    // #[storage_mapper("tokens")]
-    // fn tokens(&self) -> SetMapper<TokenIdentifier>;
     #[view(getTokens)]
     #[storage_mapper("tokens")]
     fn tokens(&self) -> SingleValueMapper<ManagedVec<TokenIdentifier>>;
 
+    // K constant for a pair
     #[view(getInitialK)]
     #[storage_mapper("initial_k")]
     fn initial_k(&self, token: &TokenIdentifier) -> SingleValueMapper<BigUint>;
 
+    // fee applied to swaps
     #[view(getFee)]
     #[storage_mapper("fee")]
     fn fee(&self) -> SingleValueMapper<u32>;
@@ -63,6 +65,7 @@ pub trait TestDEX {
         self.fee().set(&fee);
     }
 
+    // add liquidity of a token to a pair
     #[endpoint(addLiquidityToken)]
     #[only_owner]
     #[payable("*")]
@@ -91,6 +94,7 @@ pub trait TestDEX {
 
     }
     
+    // claim liquidity of a token in a pair
     #[endpoint(claimLiquidityToken)]
     #[only_owner]
     #[payable("*")]
@@ -115,6 +119,7 @@ pub trait TestDEX {
 
     }
 
+    // add liquidity of EGLD to a pair
     #[endpoint(addLiquidityEgld)]
     #[only_owner]
     #[payable("*")]
@@ -143,6 +148,7 @@ pub trait TestDEX {
 
     }
 
+    // claim liquidity of EGLD in a pair
     #[endpoint(claimLiquidityEgld)]
     #[only_owner]
     #[payable("*")]
@@ -166,6 +172,7 @@ pub trait TestDEX {
         funds
     }
 
+    // status of a pair for swapping
     #[view]
     fn status(&self, token: &TokenIdentifier) -> Status {
 
@@ -184,7 +191,7 @@ pub trait TestDEX {
 
     // }
     
-    // K va acumulando error si comprastoken con EGLD
+    // calculate K constant
     #[view(calculateK)]
     fn calculate_k(&self, token: &TokenIdentifier) -> BigUint {
 
@@ -192,6 +199,7 @@ pub trait TestDEX {
 
     }
 
+    // claim earning of a token
     #[endpoint(claimEarnings)]
     #[only_owner]
     #[payable("*")]
@@ -209,6 +217,7 @@ pub trait TestDEX {
 
     }
 
+    // calculte price of qty token in EGLD with fee
     // in: quantity EGLD
     // out: quantity token (with fee subtracted)
     #[view(priceEgldToken)]
@@ -223,7 +232,7 @@ pub trait TestDEX {
         numerator / denominator
     }
 
-
+    // calculte price of qty token in EGLD without fee
     // in: quantity EGLD
     // out: quantity token (without fee)
     #[view(priceEgldTokenNoFee)]
@@ -237,6 +246,7 @@ pub trait TestDEX {
         numerator / denominator
     }
 
+    // calcute fee to pay in qty token
     // in: token
     // out: quantity EGLD paid as a fee
     #[view(feeEgldToken)]
@@ -249,6 +259,7 @@ pub trait TestDEX {
 
     }
 
+    // calculate price of qty EGLD in token with fee
     #[view(priceTokenEgld)]
     fn price_token_egld(&self, token: &TokenIdentifier, qty: &BigUint) -> BigUint {
         
@@ -261,6 +272,7 @@ pub trait TestDEX {
         numerator / denominator
     }
 
+    // calculate price of qty EGLD in token with fee, numerator only
     #[view(priceTokenEgldNumerator)]
     fn price_token_egld_numerator(&self, token: &TokenIdentifier, qty: &BigUint) -> BigUint {
         
@@ -272,6 +284,7 @@ pub trait TestDEX {
         numerator
     }
 
+    // calculate price of qty EGLD in token with fee, denominator only
     #[view(priceTokenEgldDenominator)]
     fn price_token_egld_denominator(&self, token: &TokenIdentifier, qty: &BigUint) -> BigUint {
         
